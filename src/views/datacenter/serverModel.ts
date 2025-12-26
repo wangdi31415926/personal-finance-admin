@@ -524,7 +524,7 @@ export class ServerModel {
         screw.rotation.x = Math.PI / 2;
         screw.position.set(
           (-this.config.width / 2 + 0.1) * (i === 0 ? -1 : 1),
-          (-this.config.height / 2 + 0.15) + j * (this.config.height - 0.3),
+          -this.config.height / 2 + 0.15 + j * (this.config.height - 0.3),
           this.config.depth / 2 - 0.05
         );
         this.group.add(screw);
@@ -577,4 +577,3 @@ export function createServerUnit(id: number): THREE.Group {
   const server = new ServerModel({ id });
   return server.getGroup();
 }
-
