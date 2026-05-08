@@ -18,7 +18,13 @@ const alarms = ref(
     title: ["出站丢包突增", "主备心跳超时", "磁盘水位偏高"][i % 3],
     beam: `B-${(i % 6) + 1}`,
     time: fmtTime(new Date(Date.now() - i * 600000)),
-    state: ["待受理", "处置中", "已闭环"][i % 3]
+    state: ["待受理", "处置中", "已闭环"][i % 3],
+    ruleId: `RULE-TH-${440 + i}`,
+    metric: ["MO成功率", "出站P99", "同步偏移"][i % 3],
+    site: ["主站", "备站"][i % 2],
+    slaRemainMin: 25 - (i % 20),
+    assignee: `值班-${(i % 4) + 1}`,
+    traceId: `ALM-TRC-${20260509}-${i}`
   }))
 );
 
@@ -27,7 +33,13 @@ const plans = ref(
     id: `PL-${2600 + i}`,
     name: ["拥塞限流", "切换备链路", "扩容队列", "降级图像"][i % 4],
     step: 3 + (i % 5),
-    fresh: i % 4 === 0
+    fresh: i % 4 === 0,
+    category: ["链路", "容量", "变更回滚"][i % 3],
+    approval: ["双人复核", "值班长", "自动化"][i % 3],
+    estMin: 8 + (i % 25),
+    lastDrill: fmtTime(new Date(Date.now() - i * 86400000 * 14)),
+    owner: `预案-${(i % 3) + 1}`,
+    relatedBeam: `B-${(i % 6) + 1}`
   }))
 );
 
@@ -36,7 +48,12 @@ const traces = ref(
     id: `TR-${2700 + i}`,
     op: ["受理", "执行脚本", "人工复核", "关闭"][i % 4],
     who: `值班-${(i % 4) + 1}`,
-    time: fmtTime(new Date(Date.now() - i * 300000))
+    time: fmtTime(new Date(Date.now() - i * 300000)),
+    ticketId: `WO-${20260509}-${420 + i}`,
+    clientIp: `10.12.${i % 200}.${10 + (i % 40)}`,
+    detail: ["调用 Runbook-LNK-09", "短信通知主管", "追加观测 30min"][i % 3],
+    result: ["成功", "成功", "部分成功", "失败"][i % 4],
+    durationSec: 5 + (i % 120)
   }))
 );
 
@@ -67,15 +84,22 @@ function open(row: (typeof alarms.value)[0]) {
 
     <div v-show="tab === 'list'" class="pane">
       <PagedTable :data="alarms" :page-size="10" row-key="id" row-clickable @row-click="open">
+        <el-table-column prop="id" label="告警ID" width="112" />
         <el-table-column prop="level" label="级别" width="72">
           <template #default="{ row }">
             <el-tag :type="tagTypeOf(row.level)" size="small">{{ row.level }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="title" label="摘要" />
+        <el-table-column prop="title" label="摘要" min-width="130" show-overflow-tooltip />
         <el-table-column prop="beam" label="波束" width="72" />
-        <el-table-column prop="time" label="时间" width="158" />
-        <el-table-column prop="state" label="状态" width="88">
+        <el-table-column prop="site" label="站点" width="72" />
+        <el-table-column prop="metric" label="触发指标" width="108" />
+        <el-table-column prop="ruleId" label="规则" width="108" />
+        <el-table-column prop="slaRemainMin" label="SLA剩余分" width="104" />
+        <el-table-column prop="assignee" label="受理人" width="88" />
+        <el-table-column prop="traceId" label="TraceId" width="128" show-overflow-tooltip />
+        <el-table-column prop="time" label="触发时间" width="158" />
+        <el-table-column prop="state" label="处置状态" width="96">
           <template #default="{ row }">
             <el-tag type="info" size="small">{{ row.state }}</el-tag>
           </template>
@@ -91,9 +115,16 @@ function open(row: (typeof alarms.value)[0]) {
 
     <div v-show="tab === 'plan'" class="pane">
       <PagedTable :data="plans" :page-size="8" row-key="id">
-        <el-table-column prop="name" label="预案" />
+        <el-table-column prop="id" label="预案ID" width="108" />
+        <el-table-column prop="name" label="预案名称" min-width="120" />
+        <el-table-column prop="category" label="类别" width="96" />
+        <el-table-column prop="relatedBeam" label="适用波束" width="96" />
         <el-table-column prop="step" label="步骤数" width="88" />
-        <el-table-column prop="fresh" label="最新校验" width="96">
+        <el-table-column prop="approval" label="审批策略" width="100" />
+        <el-table-column prop="estMin" label="预计分钟" width="96" />
+        <el-table-column prop="lastDrill" label="上次演练" width="158" />
+        <el-table-column prop="owner" label="维护人" width="88" />
+        <el-table-column prop="fresh" label="校验" width="96">
           <template #default="{ row }">
             <el-tag :type="row.fresh ? 'success' : 'warning'" size="small">{{
               row.fresh ? "有效" : "待更新"
@@ -124,8 +155,14 @@ function open(row: (typeof alarms.value)[0]) {
 
     <div v-show="tab === 'trace'" class="pane">
       <PagedTable :data="traces" :page-size="10" row-key="id">
+        <el-table-column prop="id" label="流水号" width="112" />
+        <el-table-column prop="ticketId" label="工单号" width="128" />
         <el-table-column prop="op" label="动作" width="100" />
-        <el-table-column prop="who" label="人员" width="88" />
+        <el-table-column prop="detail" label="详情" min-width="140" show-overflow-tooltip />
+        <el-table-column prop="result" label="结果" width="96" />
+        <el-table-column prop="durationSec" label="耗时秒" width="88" />
+        <el-table-column prop="who" label="操作人" width="88" />
+        <el-table-column prop="clientIp" label="终端IP" width="124" />
         <el-table-column prop="time" label="时间" width="158" />
       </PagedTable>
     </div>

@@ -15,7 +15,13 @@ const mkRows = (prefix: string, n = 16) =>
     name: `池-${(i % 4) + 1}-${["网关", "计算", "存储"][i % 3]}`,
     usage: 40 + (i * 11) % 55,
     beam: `B-${(i % 6) + 1}`,
-    status: ["正常", "预警", "满载"][i % 3]
+    status: ["正常", "预警", "满载"][i % 3],
+    zone: ["主站-A栋", "主站-B栋", "备站"][i % 3],
+    rack: `R-${(i % 12) + 1}-U${10 + (i % 20)}`,
+    assetNo: `AST-${2024 + (i % 8)}-${420 + i}`,
+    alertLevel: ["—", "L2", "L3"][i % 3],
+    powerKw: (2.2 + (i % 8) * 0.35).toFixed(2),
+    maintDue: `${5 + (i % 20)}日内维保`
   }));
 
 const rows = {
@@ -53,10 +59,17 @@ const bar = () =>
       <MiniChart v-if="tab === 't4' || tab === 't5'" :option="line" :height="180" />
 
       <PagedTable :data="rows[tab as keyof typeof rows]" :page-size="8" row-key="id">
-        <el-table-column prop="name" label="对象" min-width="140" />
+        <el-table-column prop="id" label="对象ID" width="112" />
+        <el-table-column prop="name" label="对象名称" min-width="130" />
+        <el-table-column prop="zone" label="机房/区域" width="108" />
+        <el-table-column prop="rack" label="机柜位" width="108" />
+        <el-table-column prop="assetNo" label="资产编号" width="128" show-overflow-tooltip />
+        <el-table-column prop="beam" label="关联波束" width="96" />
         <el-table-column prop="usage" label="利用率%" width="96" />
-        <el-table-column prop="beam" label="波束" width="72" />
-        <el-table-column prop="status" label="状态" width="88" />
+        <el-table-column prop="powerKw" label="功耗kW" width="88" />
+        <el-table-column prop="alertLevel" label="告警等级" width="96" />
+        <el-table-column prop="maintDue" label="维保" width="108" />
+        <el-table-column prop="status" label="运行状态" width="96" />
       </PagedTable>
     </div>
   </PageShell>

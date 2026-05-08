@@ -33,10 +33,14 @@ const nodes = ref(
 const shareApis = ref(
   Array.from({ length: 12 }, (_, i) => ({
     id: `API-${200 + i}`,
+    method: ["GET", "POST", "GET"][i % 3],
     path: `/v1/ops/${["metrics", "fault", "beam", "user"][i % 4]}`,
     caller: ["运维管理系统", "业务编排", "外部审计", "集团门户"][i % 4],
     perm: ["只读", "读写", "订阅"][i % 3],
     qps: 120 + i * 37,
+    rateLimit: `${80 + (i % 5) * 20}/s`,
+    timeoutMs: 8000 + (i % 4) * 2000,
+    version: `v${1 + (i % 3)}`,
     enabled: i % 5 !== 0
   }))
 );
@@ -44,9 +48,14 @@ const shareApis = ref(
 const shareLogs = ref(
   Array.from({ length: 15 }, (_, i) => ({
     id: `SL-${300 + i}`,
+    traceId: `TRC-${20260509}${String(i).padStart(4, "0")}`,
     time: fmtTime(new Date(Date.now() - i * 420000)),
     caller: shareApis.value[i % shareApis.value.length].caller,
+    path: shareApis.value[i % shareApis.value.length].path,
+    method: shareApis.value[i % shareApis.value.length].method,
     bytes: (1200 + i * 880).toLocaleString(),
+    latencyMs: 12 + (i % 8) * 7,
+    clientIp: `10.${(i % 200) + 1}.${(i % 250)}.${(i % 200) + 10}`,
     result: i % 7 === 0 ? "权限异常" : i % 11 === 0 ? "格式错误" : "成功"
   }))
 );
@@ -210,10 +219,15 @@ function openNode(row: (typeof nodes.value)[0]) {
         <el-col :span="14">
           <div class="table-caption">外部系统 API 注册</div>
           <PagedTable :data="shareApis" :page-size="6" row-key="id">
+            <el-table-column prop="id" label="注册ID" width="100" />
+            <el-table-column prop="method" label="方法" width="72" />
             <el-table-column prop="path" label="路径" min-width="160" />
             <el-table-column prop="caller" label="调用方" width="120" />
             <el-table-column prop="perm" label="权限" width="72" />
             <el-table-column prop="qps" label="峰值QPS" width="88" />
+            <el-table-column prop="rateLimit" label="流控配额" width="100" />
+            <el-table-column prop="timeoutMs" label="超时ms" width="88" />
+            <el-table-column prop="version" label="契约版本" width="92" />
             <el-table-column prop="enabled" label="状态" width="88">
               <template #default="{ row }">
                 <el-tag :type="row.enabled ? 'success' : 'info'" size="small">{{
@@ -226,10 +240,15 @@ function openNode(row: (typeof nodes.value)[0]) {
         <el-col :span="10">
           <div class="table-caption">共享审计日志</div>
           <PagedTable :data="shareLogs" :page-size="8" row-key="id">
+            <el-table-column prop="traceId" label="TraceId" width="128" show-overflow-tooltip />
             <el-table-column prop="time" label="时间" width="158" />
-            <el-table-column prop="caller" label="调用方" width="100" />
-            <el-table-column prop="bytes" label="字节" width="88" />
-            <el-table-column prop="result" label="结果" min-width="72">
+            <el-table-column prop="caller" label="调用方" width="112" />
+            <el-table-column prop="path" label="接口路径" min-width="140" show-overflow-tooltip />
+            <el-table-column prop="method" label="方法" width="72" />
+            <el-table-column prop="bytes" label="载荷字节" width="96" />
+            <el-table-column prop="latencyMs" label="时延ms" width="88" />
+            <el-table-column prop="clientIp" label="来源IP" width="124" />
+            <el-table-column prop="result" label="结果" width="96">
               <template #default="{ row }">
                 <el-tag :type="row.result === '成功' ? 'success' : 'danger'" size="small">{{
                   row.result

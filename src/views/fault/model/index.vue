@@ -14,7 +14,13 @@ const elements = ref(
     name: ["出站时延", "误码率", "CPU", "内存水位", "队列深度"][i % 5],
     weight: 10 + (i % 8),
     faultType: ["链路", "资源", "协议", "同步"][i % 4],
-    linked: `FLT-${420 + i}`
+    linked: `FLT-${420 + i}`,
+    kpiCode: `KPI-LNK-${(i % 6) + 1}`,
+    beam: `B-${(i % 6) + 1}`,
+    sampleWindow: ["15m", "1h", "24h"][i % 3],
+    thresholdHint: `>${60 + (i % 20)}ms`,
+    confidence: `${82 + (i % 15)}%`,
+    updatedAt: fmtTime(new Date(Date.now() - i * 7200000))
   }))
 );
 
@@ -23,6 +29,11 @@ const versions = ref(
     id: `MV-${1500 + i}`,
     ver: `M-${2026}.${i % 9}.${i % 4}`,
     editor: `建模-${(i % 3) + 1}`,
+    reviewer: `复核-${(i % 2) + 1}`,
+    nodesChanged: 2 + (i % 6),
+    edgesChanged: i % 5,
+    coverage: `${88 + (i % 10)}%`,
+    baseline: `BL-${20260501 + (i % 5)}`,
     time: fmtTime(new Date(Date.now() - i * 86400000)),
     delta: i % 3 === 0 ? "新增 3 条关联边" : "权重微调"
   }))
@@ -63,19 +74,32 @@ function onRow(row: (typeof elements.value)[0]) {
           row-clickable
           @row-click="onRow"
         >
-          <el-table-column prop="name" label="要素" />
-          <el-table-column prop="weight" label="权重" width="72" />
+          <el-table-column prop="id" label="要素ID" width="108" />
+          <el-table-column prop="name" label="监测要素" min-width="100" />
+          <el-table-column prop="kpiCode" label="指标编码" width="108" />
           <el-table-column prop="faultType" label="故障域" width="88" />
-          <el-table-column prop="linked" label="关联故障样例" width="120" />
+          <el-table-column prop="beam" label="波束" width="72" />
+          <el-table-column prop="weight" label="权重" width="72" />
+          <el-table-column prop="sampleWindow" label="采样窗口" width="96" />
+          <el-table-column prop="thresholdHint" label="阈值提示" width="108" />
+          <el-table-column prop="confidence" label="置信度" width="88" />
+          <el-table-column prop="linked" label="关联样例" width="112" />
+          <el-table-column prop="updatedAt" label="更新时间" width="158" />
         </PagedTable>
       </div>
       <div class="table-wrap">
         <div class="cap">模型版本</div>
         <PagedTable :data="versions" :page-size="8" row-key="id">
-          <el-table-column prop="ver" label="版本" width="100" />
+          <el-table-column prop="id" label="记录ID" width="108" />
+          <el-table-column prop="ver" label="版本" width="108" />
           <el-table-column prop="editor" label="编辑人" width="88" />
-          <el-table-column prop="time" label="时间" width="158" />
-          <el-table-column prop="delta" label="变更说明" />
+          <el-table-column prop="reviewer" label="复核人" width="88" />
+          <el-table-column prop="nodesChanged" label="节点变更" width="96" />
+          <el-table-column prop="edgesChanged" label="边变更" width="88" />
+          <el-table-column prop="coverage" label="覆盖率" width="88" />
+          <el-table-column prop="baseline" label="对照基线" width="120" />
+          <el-table-column prop="time" label="提交时间" width="158" />
+          <el-table-column prop="delta" label="变更说明" min-width="120" show-overflow-tooltip />
         </PagedTable>
       </div>
     </div>

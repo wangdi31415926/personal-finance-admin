@@ -16,7 +16,13 @@ const rows = computed(() =>
     grp: ["集团A", "集团B", "大众"][i % 3],
     metric: `${120 + (i * 17) % 500} 条/日`,
     risk: ["低", "中", "高"][i % 3],
-    beam: `B-${(i % 6) + 1}`
+    beam: `B-${(i % 6) + 1}`,
+    terminalVer: `FW-${2 + (i % 4)}.${i % 15}`,
+    lastActive: `${(i % 12) + 1}h前`,
+    moShare: `${(35 + (i % 40)).toFixed(1)}%`,
+    peakHour: `${8 + (i % 12)}:00`,
+    roamFlag: i % 7 === 0 ? "跨区域" : "本地",
+    billPlan: ["套餐甲", "套餐乙", "流量叠加"][i % 3]
   }))
 );
 
@@ -59,11 +65,18 @@ const pie = () =>
       <MiniChart v-else-if="tab === 'u2'" :option="trend" :height="200" />
 
       <PagedTable :data="rows" :page-size="10" row-key="id">
+        <el-table-column prop="id" label="记录ID" width="128" show-overflow-tooltip />
         <el-table-column prop="uid" label="用户/终端" width="120" />
         <el-table-column prop="grp" label="集团/类型" width="100" />
-        <el-table-column prop="metric" label="业务量" width="120" />
-        <el-table-column prop="risk" label="风险" width="72" />
-        <el-table-column prop="beam" label="波束" width="72" />
+        <el-table-column prop="beam" label="主波束" width="88" />
+        <el-table-column prop="metric" label="业务量(估)" width="120" />
+        <el-table-column prop="moShare" label="MO占比" width="96" />
+        <el-table-column prop="terminalVer" label="终端版本" width="108" />
+        <el-table-column prop="peakHour" label="峰值时段" width="96" />
+        <el-table-column prop="lastActive" label="最近活跃" width="96" />
+        <el-table-column prop="roamFlag" label="漫游" width="88" />
+        <el-table-column prop="billPlan" label="资费策略" width="100" />
+        <el-table-column prop="risk" label="风险等级" width="88" />
       </PagedTable>
     </div>
   </PageShell>

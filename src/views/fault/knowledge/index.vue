@@ -3,7 +3,7 @@ import { ref } from "vue";
 import PageShell from "@/views/_shared/PageShell.vue";
 import PagedTable from "@/views/_shared/PagedTable.vue";
 import MiniChart from "@/views/_shared/MiniChart.vue";
-import { simplePieOption } from "@/views/_shared/mockUtils";
+import { simplePieOption, fmtTime } from "@/views/_shared/mockUtils";
 
 defineOptions({ name: "FaultKnowledge" });
 
@@ -15,7 +15,12 @@ const kbItems = ref(
     cat: ["链路", "资源", "协议", "同步"][i % 4],
     title: ["出站拥塞", "误码突刺", "CPU 热点", "时钟漂移"][i % 4],
     score: 80 + (i % 15),
-    beam: `B-${(i % 6) + 1}`
+    beam: `B-${(i % 6) + 1}`,
+    source: ["工单沉淀", "演练复盘", "厂商通告"][i % 3],
+    hits30d: 5 + (i % 42),
+    owner: `知识-${(i % 3) + 1}`,
+    updatedAt: fmtTime(new Date(Date.now() - i * 86400000)),
+    classification: ["受限", "内部", "公开"][i % 3]
   }))
 );
 
@@ -24,7 +29,13 @@ const diagCases = ref(
     id: `DC-${1700 + i}`,
     symptom: "出站时延 > 120ms 且误码率抬升",
     root: ["波束拥塞", "地面链路抖动", "调制异常"][i % 3],
-    status: ["草稿", "已发布", "复核中"][i % 3]
+    status: ["草稿", "已发布", "复核中"][i % 3],
+    confidence: `${76 + (i % 20)}%`,
+    beam: `B-${(i % 6) + 1}`,
+    relatedAlarm: `ALM-${2480 + i}`,
+    editor: `诊断-${(i % 4) + 1}`,
+    updatedAt: fmtTime(new Date(Date.now() - i * 43200000)),
+    ver: `D-${1 + (i % 3)}.${i % 8}`
   }))
 );
 
@@ -33,7 +44,12 @@ const manuals = ref(
     id: `MN-${1800 + i}`,
     name: `北斗短报文-${["应急", "扩容", "主备切换", "观测"][i % 4]}手册`,
     ver: `v${1 + (i % 4)}.${i % 6}`,
-    chapter: `${2 + (i % 5)}.${i % 9} 节`
+    chapter: `${2 + (i % 5)}.${i % 9} 节`,
+    pages: 40 + (i % 80),
+    author: `编制-${(i % 3) + 1}`,
+    approvedBy: `批准-${(i % 2) + 1}`,
+    effectiveAt: fmtTime(new Date(Date.now() - i * 86400000 * 20)),
+    nextReview: fmtTime(new Date(Date.now() + i * 86400000 * 60))
   }))
 );
 
@@ -97,10 +113,16 @@ const graphOpt = {
         </el-col>
         <el-col :span="14">
           <PagedTable :data="kbItems" :page-size="8" row-key="id">
+            <el-table-column prop="id" label="条目ID" width="108" />
             <el-table-column prop="cat" label="分类" width="72" />
-            <el-table-column prop="title" label="条目" />
-            <el-table-column prop="score" label="匹配分" width="80" />
+            <el-table-column prop="title" label="标题" min-width="100" />
             <el-table-column prop="beam" label="波束" width="72" />
+            <el-table-column prop="score" label="匹配分" width="80" />
+            <el-table-column prop="source" label="来源" width="100" />
+            <el-table-column prop="hits30d" label="30日命中" width="96" />
+            <el-table-column prop="owner" label="维护人" width="88" />
+            <el-table-column prop="classification" label="密级" width="80" />
+            <el-table-column prop="updatedAt" label="更新时间" width="158" />
           </PagedTable>
         </el-col>
       </el-row>
@@ -113,17 +135,30 @@ const graphOpt = {
         <el-step title="校验发布" />
       </el-steps>
       <PagedTable :data="diagCases" :page-size="8" row-key="id">
-        <el-table-column prop="symptom" label="症状" min-width="200" />
+        <el-table-column prop="id" label="案例ID" width="108" />
+        <el-table-column prop="symptom" label="症状描述" min-width="180" show-overflow-tooltip />
         <el-table-column prop="root" label="根因模板" width="120" />
+        <el-table-column prop="beam" label="波束" width="72" />
+        <el-table-column prop="confidence" label="置信度" width="88" />
+        <el-table-column prop="relatedAlarm" label="关联告警" width="112" />
         <el-table-column prop="status" label="状态" width="88" />
+        <el-table-column prop="ver" label="版本" width="88" />
+        <el-table-column prop="editor" label="编辑人" width="88" />
+        <el-table-column prop="updatedAt" label="更新时间" width="158" />
       </PagedTable>
     </div>
 
     <div v-show="tab === 'manual'" class="pane">
       <PagedTable :data="manuals" :page-size="8" row-key="id">
-        <el-table-column prop="name" label="手册" />
+        <el-table-column prop="id" label="手册ID" width="108" />
+        <el-table-column prop="name" label="名称" min-width="160" show-overflow-tooltip />
         <el-table-column prop="ver" label="版本" width="88" />
-        <el-table-column prop="chapter" label="定位章节" width="100" />
+        <el-table-column prop="chapter" label="锚点章节" width="100" />
+        <el-table-column prop="pages" label="页数" width="72" />
+        <el-table-column prop="author" label="编制" width="88" />
+        <el-table-column prop="approvedBy" label="批准" width="88" />
+        <el-table-column prop="effectiveAt" label="生效日期" width="158" />
+        <el-table-column prop="nextReview" label="复审计划" width="158" />
       </PagedTable>
       <el-alert
         class="mt"

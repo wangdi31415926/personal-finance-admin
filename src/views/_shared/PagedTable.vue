@@ -14,6 +14,11 @@ const props = withDefaults(
     stripe?: boolean;
     /** 强制每行高度（固定 dense 表格时） */
     size?: "small" | "default" | "large";
+    /**
+     * 是否撑满父级高度（默认 true，表体可内部滚动）。
+     * 设为 false 时按内容高度展开，不占满 flex 剩余空间。
+     */
+    fillContainer?: boolean;
   }>(),
   {
     pageSize: 10,
@@ -21,7 +26,8 @@ const props = withDefaults(
     emptyText: "暂无数据",
     rowClickable: false,
     stripe: true,
-    size: "small"
+    size: "small",
+    fillContainer: true
   }
 );
 
@@ -53,7 +59,7 @@ defineExpose({ resetPage: () => (page.value = 1), search });
 </script>
 
 <template>
-  <div class="paged-table">
+  <div class="paged-table" :class="{ 'paged-table--fill': fillContainer }">
     <div class="paged-table-body">
       <el-table
         :data="pageData.list"
@@ -62,7 +68,7 @@ defineExpose({ resetPage: () => (page.value = 1), search });
         :size="size"
         :empty-text="emptyText"
         :row-class-name="rowClickable ? 'clickable-row' : ''"
-        height="100%"
+        :height="fillContainer ? '100%' : undefined"
         @row-click="onRowClick"
       >
         <slot />
@@ -92,6 +98,13 @@ defineExpose({ resetPage: () => (page.value = 1), search });
   flex-direction: column;
   min-height: 0;
   overflow: hidden;
+}
+.paged-table:not(.paged-table--fill) {
+  flex: 0 0 auto;
+  overflow: visible;
+}
+.paged-table:not(.paged-table--fill) .paged-table-body {
+  overflow: visible;
 }
 .paged-table-body {
   flex: 1;

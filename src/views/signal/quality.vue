@@ -3,7 +3,7 @@ import { computed } from "vue";
 import PageShell from "@/views/_shared/PageShell.vue";
 import PagedTable from "@/views/_shared/PagedTable.vue";
 import MiniChart from "@/views/_shared/MiniChart.vue";
-import { genTimeSeries, simpleLineOption } from "@/views/_shared/mockUtils";
+import { genTimeSeries, simpleLineOption, fmtTime } from "@/views/_shared/mockUtils";
 
 defineOptions({ name: "SigQuality" });
 
@@ -12,7 +12,15 @@ const rows = Array.from({ length: 16 }, (_, i) => ({
   beam: `B-${(i % 6) + 1}`,
   freq: `${1610 + (i % 5) * 2} MHz`,
   evm: `${2 + (i % 5)}.${i % 10}%`,
-  cnr: `${11 + (i % 6)}.${i % 10} dBHz`
+  cnr: `${11 + (i % 6)}.${i % 10} dBHz`,
+  satId: `GEO-${(i % 2) + 3}`,
+  polar: ["LHCP", "RHCP"][i % 2],
+  lockState: ["锁定", "失锁", "牵引"][i % 3],
+  berEst: `1e-${6 + (i % 3)}`,
+  sampleWindow: ["1s", "10s", "1min"][i % 3],
+  rxSite: ["主站-RF1", "备站-RF2"][i % 2],
+  weatherTag: ["晴", "小雨", "云层"][i % 3],
+  updatedAt: fmtTime(new Date(Date.now() - i * 300000))
 }));
 
 const o1 = computed(() => {
@@ -37,10 +45,19 @@ const o2 = computed(() => {
         </el-col>
       </el-row>
       <PagedTable :data="rows" :page-size="10" row-key="id">
+        <el-table-column prop="id" label="采样ID" width="108" />
         <el-table-column prop="beam" label="波束" width="72" />
+        <el-table-column prop="satId" label="卫星" width="88" />
         <el-table-column prop="freq" label="频点" width="120" />
+        <el-table-column prop="polar" label="极化" width="72" />
         <el-table-column prop="evm" label="EVM" width="88" />
-        <el-table-column prop="cnr" label="C/N0" width="88" />
+        <el-table-column prop="cnr" label="C/N0" width="96" />
+        <el-table-column prop="berEst" label="误码估计" width="100" />
+        <el-table-column prop="lockState" label="环路状态" width="96" />
+        <el-table-column prop="sampleWindow" label="积分窗" width="88" />
+        <el-table-column prop="rxSite" label="地面站" width="108" />
+        <el-table-column prop="weatherTag" label="气象标签" width="96" />
+        <el-table-column prop="updatedAt" label="更新时间" width="158" />
       </PagedTable>
     </div>
   </PageShell>

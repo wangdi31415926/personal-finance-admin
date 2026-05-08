@@ -68,10 +68,11 @@ defineProps<{
   margin: 0;
   white-space: nowrap;
 }
+/* 文档章节对照：完全透明（不占视觉，仍保留 DOM 供无障碍/检索可选） */
 .shell-subtitle {
   font-size: 12px;
-  color: var(--el-text-color-secondary);
   white-space: nowrap;
+  color: transparent;
 }
 .shell-toolbar {
   display: flex;

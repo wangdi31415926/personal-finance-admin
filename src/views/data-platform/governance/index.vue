@@ -37,7 +37,12 @@ const backupTasks = ref(
     type: ["全量", "增量", "差异"][i % 3],
     scope: ["核心故障表", "规整日志", "镜像索引", "出站指标"][i % 4],
     site: i % 2 === 0 ? "本地机房" : "异地灾备",
+    policyId: `POL-BKP-${240 + (i % 8)}`,
+    durationMin: 20 + (i % 90),
+    sizeGb: (12 + (i % 40) * 3.2).toFixed(1),
+    owner: `备份-${(i % 3) + 1}`,
     nextRun: fmtTime(new Date(Date.now() + i * 86400000)),
+    lastResult: ["成功", "成功", "校验警告", "失败"][i % 4],
     status: ["已完成", "调度中", "失败"][i % 3]
   }))
 );
@@ -45,9 +50,14 @@ const backupTasks = ref(
 const lifecycleRules = ref(
   Array.from({ length: 10 }, (_, i) => ({
     id: `LC-${500 + i}`,
+    datasetCode: `DS-${["ODS", "DWD", "ARCH"][i % 3]}-${420 + i}`,
     category: ["核心业务", "普通业务", "归档镜像"][i % 3],
     retain: `${1 + (i % 3)} 年`,
-    action: ["迁移至温层", "归档冷存储", "到期销毁"][i % 3]
+    action: ["迁移至温层", "归档冷存储", "到期销毁"][i % 3],
+    effectiveFrom: fmtTime(new Date(Date.now() - i * 86400000 * 30)),
+    reviewCycle: ["季度", "半年", "年度"][i % 3],
+    owner: `数据治理-${(i % 2) + 1}`,
+    compliance: ["等保三级", "内部规范", "军队档案"][i % 3]
   }))
 );
 
@@ -56,31 +66,49 @@ const entities = ref({
     id: `DEV-${600 + i}`,
     name: `监测接收机-${i + 1}`,
     type: "设备实体",
-    site: ["主站", "备站"][i % 2]
+    site: ["主站", "备站"][i % 2],
+    vendor: ["国产A", "国产B", "合资C"][i % 3],
+    healthScore: 72 + (i * 11) % 25,
+    firmware: `RX-${2 + (i % 4)}.${i % 12}`,
+    lastHeartbeat: fmtTime(new Date(Date.now() - i * 120000))
   })),
   fault: Array.from({ length: 6 }, (_, i) => ({
     id: `FLT-${610 + i}`,
     name: `出站链路抖动 #${i + 1}`,
     type: "故障实体",
-    level: ["P0", "P1", "P2"][i % 3]
+    level: ["P0", "P1", "P2"][i % 3],
+    beam: `B-${(i % 6) + 1}`,
+    occurrences30d: 1 + (i % 8),
+    mttrMin: 18 + (i % 45),
+    status: ["已归档", "跟踪中", "待复盘"][i % 3]
   })),
   task: Array.from({ length: 5 }, (_, i) => ({
     id: `TK-${620 + i}`,
     name: `巡检任务-${i + 1}`,
     type: "运维任务实体",
-    owner: `运维-${(i % 4) + 1}`
+    owner: `运维-${(i % 4) + 1}`,
+    priority: ["P0", "P1", "P2"][i % 3],
+    nextRun: fmtTime(new Date(Date.now() + i * 43200000)),
+    slaMin: 25 + (i % 20),
+    state: ["待执行", "执行中", "已闭环"][i % 3]
   })),
   user: Array.from({ length: 5 }, (_, i) => ({
     id: `USR-${630 + i}`,
     name: `值班员-${i + 1}`,
     type: "用户实体",
-    role: ["值班", "审核", "主管"][i % 3]
+    role: ["值班", "审核", "主管"][i % 3],
+    shiftGroup: ["甲班", "乙班", "机动"][i % 3],
+    phoneMasked: `138****${1000 + i}`,
+    lastLogin: fmtTime(new Date(Date.now() - i * 3600000))
   })),
   doc: Array.from({ length: 5 }, (_, i) => ({
     id: `DOC-${640 + i}`,
     name: `手册-${["扩容", "切换", "应急", "回滚", "观测"][i]}`,
     type: "运维文档实体",
-    ver: `v${1 + (i % 3)}`
+    ver: `v${1 + (i % 3)}`,
+    classification: ["内部", "受限", "公开"][i % 3],
+    approvedBy: `审批-${(i % 3) + 1}`,
+    updatedAt: fmtTime(new Date(Date.now() - i * 86400000 * (i % 5 + 1)))
   }))
 });
 
@@ -129,8 +157,69 @@ const ruleVersions = ref(
     id: `RV-${700 + i}`,
     ver: `v${2 + (i % 4)}.${i % 5}`,
     editor: `运维-${(i % 3) + 1}`,
+    changeSet: `${3 + (i % 5)} 文件`,
+    tested: i % 4 !== 0,
+    rollbackVer: `v${1 + (i % 3)}.${(i + 2) % 5}`,
+    deployEnv: ["灰度", "生产", "演练"][i % 3],
     time: fmtTime(new Date(Date.now() - i * 86400000)),
     note: ["阈值收紧", "编码补齐", "新增波束字段", "关系模板"][i % 4]
+  }))
+);
+
+const outlierRows = ref(
+  Array.from({ length: 14 }, (_, i) => ({
+    id: `OV-${i}`,
+    field: ["rssi_dbm", "latency_ms", "cpu_pct"][i % 3],
+    rawValue: `${80 + i}.${i % 10}`,
+    unit: ["dBm", "ms", "%"][i % 3],
+    ruleId: `CLN-R-${440 + i}`,
+    severity: ["高", "中", "低"][i % 3],
+    action: ["剔除", "修正", "标记保留"][i % 3],
+    beamId: `B-${(i % 6) + 1}`,
+    batchId: `BT-${20260509}-${String(i).padStart(3, "0")}`,
+    detectedAt: fmtTime(new Date(Date.now() - i * 180000))
+  }))
+);
+
+const missingRows = ref(
+  Array.from({ length: 12 }, (_, i) => ({
+    id: `MV-${i}`,
+    field: ["beam_id", "carrier_freq", "remark_txt"][i % 3],
+    missingRate: `${(0.3 + (i % 7) * 0.4).toFixed(1)}%`,
+    fillStrategy: ["关联推导", "业务默认值", "时段均值"][i % 3],
+    confidence: `${70 + (i % 25)}%`,
+    sourceTable: ["ods_terminal_evt", "dwd_link_metric", "ods_alarm_raw"][i % 3],
+    reviewer: `质检-${(i % 3) + 1}`,
+    beamId: `B-${(i % 5) + 2}`,
+    batchId: `MV-${20260509}-${i}`
+  }))
+);
+
+const dupRows = ref(
+  Array.from({ length: 10 }, (_, i) => ({
+    id: `RD-${i}`,
+    dedupeKey: `device_id+ts_${i % 4}`,
+    collisionWindow: `${30 + (i % 5) * 10}s`,
+    removedCount: 2 + (i % 4),
+    retainedKey: `first_seen_${420 + i}`,
+    rule: ["最晚采集优先", "最早优先", "权重最高"][i % 3],
+    beamId: `B-${(i % 6) + 1}`,
+    status: ["已清理", "复审中"][i % 2],
+    operator: `批任务-${(i % 2) + 1}`
+  }))
+);
+
+const unstructRows = ref(
+  Array.from({ length: 12 }, (_, i) => ({
+    id: `US-${i}`,
+    src: ["故障报告.pdf", "语音日志.wav", "站台照片.jpg"][i % 3],
+    mimeType: ["application/pdf", "audio/wav", "image/jpeg"][i % 3],
+    extractedField: ["设备编号", "故障码", "拍摄时间"][i % 3],
+    confidence: `${65 + (i % 30)}%`,
+    engine: ["OCR-v3", "ASR-北斗专版", "CV-站点"][i % 3],
+    durationMs: 800 + i * 120,
+    ok: i % 6 !== 0,
+    reviewer: `结构化-${(i % 3) + 1}`
   }))
 );
 
@@ -180,72 +269,51 @@ function openRule(row: { ver: string }) {
 
       <el-tabs v-model="cleanTab" type="border-card" class="inner-tabs">
         <el-tab-pane label="异常值处理" name="outlier">
-          <PagedTable
-            :data="
-              Array.from({ length: 14 }, (_, i) => ({
-                id: `OV-${i}`,
-                field: ['rssi', 'latency', 'cpu'][i % 3],
-                raw: `${80 + i}.${i}`,
-                action: ['剔除', '修正', '标记'][i % 3]
-              }))
-            "
-            :page-size="7"
-            row-key="id"
-          >
-            <el-table-column prop="field" label="字段" />
-            <el-table-column prop="raw" label="原始值" />
-            <el-table-column prop="action" label="处置" />
+          <PagedTable :data="outlierRows" :page-size="7" row-key="id">
+            <el-table-column prop="field" label="字段" width="120" />
+            <el-table-column prop="rawValue" label="原始值" width="88" />
+            <el-table-column prop="unit" label="单位" width="72" />
+            <el-table-column prop="ruleId" label="规则ID" width="108" />
+            <el-table-column prop="severity" label="严重度" width="80" />
+            <el-table-column prop="beamId" label="波束" width="72" />
+            <el-table-column prop="action" label="处置动作" width="100" />
+            <el-table-column prop="batchId" label="批次" width="128" show-overflow-tooltip />
+            <el-table-column prop="detectedAt" label="检出时间" width="158" />
           </PagedTable>
         </el-tab-pane>
         <el-tab-pane label="缺失值处理" name="missing">
-          <PagedTable
-            :data="
-              Array.from({ length: 12 }, (_, i) => ({
-                id: `MV-${i}`,
-                field: ['beam_id', 'freq', 'remark'][i % 3],
-                fill: ['关联推导', '默认值', '均值填充'][i % 3]
-              }))
-            "
-            :page-size="6"
-            row-key="id"
-          >
-            <el-table-column prop="field" label="字段" />
-            <el-table-column prop="fill" label="填充策略" />
+          <PagedTable :data="missingRows" :page-size="6" row-key="id">
+            <el-table-column prop="field" label="字段" width="140" />
+            <el-table-column prop="missingRate" label="缺失率" width="88" />
+            <el-table-column prop="fillStrategy" label="填充策略" min-width="100" />
+            <el-table-column prop="confidence" label="置信度" width="88" />
+            <el-table-column prop="sourceTable" label="来源表" min-width="140" show-overflow-tooltip />
+            <el-table-column prop="beamId" label="波束" width="72" />
+            <el-table-column prop="reviewer" label="复核人" width="88" />
+            <el-table-column prop="batchId" label="批次" width="120" />
           </PagedTable>
         </el-tab-pane>
         <el-tab-pane label="冗余数据" name="dup">
-          <PagedTable
-            :data="
-              Array.from({ length: 10 }, (_, i) => ({
-                id: `RD-${i}`,
-                key: `设备+时间戳`,
-                removed: 2 + (i % 4),
-                rule: ['最晚采集优先', '最早优先'][i % 2]
-              }))
-            "
-            :page-size="5"
-            row-key="id"
-          >
-            <el-table-column prop="key" label="去重键" />
-            <el-table-column prop="removed" label="删除条数" width="100" />
-            <el-table-column prop="rule" label="保留策略" />
+          <PagedTable :data="dupRows" :page-size="5" row-key="id">
+            <el-table-column prop="dedupeKey" label="去重键定义" min-width="120" />
+            <el-table-column prop="collisionWindow" label="碰撞窗口" width="100" />
+            <el-table-column prop="removedCount" label="删除条数" width="96" />
+            <el-table-column prop="retainedKey" label="保留记录" width="120" show-overflow-tooltip />
+            <el-table-column prop="rule" label="保留策略" width="108" />
+            <el-table-column prop="beamId" label="波束" width="72" />
+            <el-table-column prop="status" label="状态" width="88" />
+            <el-table-column prop="operator" label="执行体" width="96" />
           </PagedTable>
         </el-tab-pane>
         <el-tab-pane label="非结构化结构化" name="unstruct">
-          <PagedTable
-            :data="
-              Array.from({ length: 12 }, (_, i) => ({
-                id: `US-${i}`,
-                src: ['故障报告.pdf', '语音日志.wav', '站台照片.jpg'][i % 3],
-                extracted: ['设备编号', '故障码', '拍摄时间'][i % 3],
-                ok: i % 6 !== 0
-              }))
-            "
-            :page-size="6"
-            row-key="id"
-          >
-            <el-table-column prop="src" label="来源" />
-            <el-table-column prop="extracted" label="抽取字段" />
+          <PagedTable :data="unstructRows" :page-size="6" row-key="id">
+            <el-table-column prop="src" label="来源文件" min-width="120" />
+            <el-table-column prop="mimeType" label="MIME" width="120" show-overflow-tooltip />
+            <el-table-column prop="extractedField" label="抽取字段" width="100" />
+            <el-table-column prop="confidence" label="置信度" width="88" />
+            <el-table-column prop="engine" label="引擎" width="120" />
+            <el-table-column prop="durationMs" label="耗时ms" width="88" />
+            <el-table-column prop="reviewer" label="复核" width="88" />
             <el-table-column prop="ok" label="结果" width="88">
               <template #default="{ row }">
                 <el-tag :type="row.ok ? 'success' : 'danger'" size="small">{{
@@ -266,10 +334,16 @@ function openRule(row: { ver: string }) {
         <el-col :span="16">
           <div class="table-caption">备份任务（本地 + 异地）</div>
           <PagedTable :data="backupTasks" :page-size="7" row-key="id">
+            <el-table-column prop="id" label="任务ID" width="100" />
             <el-table-column prop="type" label="类型" width="72" />
-            <el-table-column prop="scope" label="范围" />
+            <el-table-column prop="scope" label="范围" min-width="120" show-overflow-tooltip />
             <el-table-column prop="site" label="站点" width="100" />
+            <el-table-column prop="policyId" label="策略" width="108" />
+            <el-table-column prop="durationMin" label="预计分钟" width="96" />
+            <el-table-column prop="sizeGb" label="体量GB" width="88" />
+            <el-table-column prop="owner" label="责任人" width="88" />
             <el-table-column prop="nextRun" label="下次执行" width="158" />
+            <el-table-column prop="lastResult" label="上次结果" width="96" />
             <el-table-column prop="status" label="状态" width="88">
               <template #default="{ row }">
                 <el-tag :type="tagTypeOf(row.status)" size="small">{{ row.status }}</el-tag>
@@ -280,9 +354,15 @@ function openRule(row: { ver: string }) {
       </el-row>
       <div class="table-caption mt">生命周期策略</div>
       <PagedTable :data="lifecycleRules" :page-size="8" row-key="id">
-        <el-table-column prop="category" label="数据类别" />
-        <el-table-column prop="retain" label="留存" width="88" />
-        <el-table-column prop="action" label="到期动作" />
+        <el-table-column prop="id" label="规则ID" width="100" />
+        <el-table-column prop="datasetCode" label="数据集" min-width="120" />
+        <el-table-column prop="category" label="数据类别" width="100" />
+        <el-table-column prop="retain" label="留存周期" width="96" />
+        <el-table-column prop="action" label="到期动作" width="108" />
+        <el-table-column prop="effectiveFrom" label="生效时间" width="158" />
+        <el-table-column prop="reviewCycle" label="复核周期" width="96" />
+        <el-table-column prop="owner" label="责任人" width="96" />
+        <el-table-column prop="compliance" label="合规标签" width="100" />
       </PagedTable>
       <el-alert
         title="恢复向导（mock）：单文件 / 局部块 / 整库 — 已在运维控制台接入备份索引。"
@@ -308,26 +388,51 @@ function openRule(row: { ver: string }) {
         <div class="table-cell">
           <PagedTable :data="entities[entityTab]" row-key="id" :page-size="8">
             <el-table-column prop="id" label="实体ID" width="100" />
-            <el-table-column prop="name" label="名称" />
-            <el-table-column prop="type" label="类型" width="120" />
-            <el-table-column label="属性" min-width="100">
-              <template #default="{ row }">
-                <span v-if="entityTab === 'device'">{{ (row as any).site }}</span>
-                <span v-else-if="entityTab === 'fault'">{{ (row as any).level }}</span>
-                <span v-else-if="entityTab === 'task'">{{ (row as any).owner }}</span>
-                <span v-else-if="entityTab === 'user'">{{ (row as any).role }}</span>
-                <span v-else>{{ (row as any).ver }}</span>
-              </template>
-            </el-table-column>
+            <el-table-column prop="name" label="名称" min-width="120" />
+            <el-table-column prop="type" label="类型" width="110" />
+            <el-table-column v-if="entityTab === 'device'" prop="site" label="站点" width="72" />
+            <el-table-column v-if="entityTab === 'device'" prop="vendor" label="厂商" width="88" />
+            <el-table-column v-if="entityTab === 'device'" prop="healthScore" label="健康分" width="88" />
+            <el-table-column v-if="entityTab === 'device'" prop="firmware" label="固件" width="100" />
+            <el-table-column v-if="entityTab === 'device'" prop="lastHeartbeat" label="最近心跳" width="158" />
+            <el-table-column v-if="entityTab === 'fault'" prop="level" label="级别" width="72" />
+            <el-table-column v-if="entityTab === 'fault'" prop="beam" label="波束" width="72" />
+            <el-table-column v-if="entityTab === 'fault'" prop="occurrences30d" label="30日次数" width="100" />
+            <el-table-column v-if="entityTab === 'fault'" prop="mttrMin" label="MTTR分" width="88" />
+            <el-table-column v-if="entityTab === 'fault'" prop="status" label="状态" width="88" />
+            <el-table-column v-if="entityTab === 'task'" prop="owner" label="责任人" width="88" />
+            <el-table-column v-if="entityTab === 'task'" prop="priority" label="优先级" width="88" />
+            <el-table-column v-if="entityTab === 'task'" prop="nextRun" label="下次执行" width="158" />
+            <el-table-column v-if="entityTab === 'task'" prop="slaMin" label="SLA分" width="80" />
+            <el-table-column v-if="entityTab === 'task'" prop="state" label="状态" width="88" />
+            <el-table-column v-if="entityTab === 'user'" prop="role" label="角色" width="88" />
+            <el-table-column v-if="entityTab === 'user'" prop="shiftGroup" label="班组" width="88" />
+            <el-table-column v-if="entityTab === 'user'" prop="phoneMasked" label="联系方式" width="120" />
+            <el-table-column v-if="entityTab === 'user'" prop="lastLogin" label="最近登录" width="158" />
+            <el-table-column v-if="entityTab === 'doc'" prop="ver" label="版本" width="80" />
+            <el-table-column v-if="entityTab === 'doc'" prop="classification" label="密级" width="88" />
+            <el-table-column v-if="entityTab === 'doc'" prop="approvedBy" label="审批人" width="88" />
+            <el-table-column v-if="entityTab === 'doc'" prop="updatedAt" label="更新时间" width="158" />
           </PagedTable>
         </div>
       </div>
       <div class="table-caption">抽取规则版本</div>
       <PagedTable :data="ruleVersions" :page-size="8" row-key="id" row-clickable @row-click="openRule">
+        <el-table-column prop="id" label="记录ID" width="100" />
         <el-table-column prop="ver" label="版本" width="88" />
         <el-table-column prop="editor" label="修改人" width="88" />
-        <el-table-column prop="time" label="时间" width="158" />
-        <el-table-column prop="note" label="摘要" />
+        <el-table-column prop="changeSet" label="变更范围" width="96" />
+        <el-table-column prop="tested" label="回归测" width="88">
+          <template #default="{ row }">
+            <el-tag :type="row.tested ? 'success' : 'warning'" size="small">{{
+              row.tested ? "通过" : "未测"
+            }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="rollbackVer" label="可回滚至" width="100" />
+        <el-table-column prop="deployEnv" label="发布环境" width="96" />
+        <el-table-column prop="time" label="提交时间" width="158" />
+        <el-table-column prop="note" label="摘要" min-width="120" show-overflow-tooltip />
       </PagedTable>
     </div>
 
